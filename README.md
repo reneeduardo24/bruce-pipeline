@@ -1,15 +1,15 @@
 # bruce-pipeline
 
-`bruce-pipeline` is an MVP for Raspberry Pi + CasaOS that ingests Bruce RAW Sniffer captures, validates `.pcap/.pcapng` files, deduplicates by SHA256, extracts Wi-Fi metrics with `tshark`, computes IACO, classifies the environment, and publishes persistent JSON, CSV, and HTML outputs.
+`bruce-pipeline` es un MVP para Raspberry Pi + CasaOS que ingesta capturas de Bruce RAW Sniffer, valida archivos `.pcap/.pcapng`, deduplica por SHA256, extrae métricas Wi-Fi con `tshark`, calcula IACO, clasifica el entorno y publica salidas persistentes en JSON, CSV y HTML.
 
-## Included services
+## Servicios incluidos
 
-- `bruce-analyzer`: watches `/data/inbox`, processes captures, persists state in SQLite, updates reports, and runs a hook on classification changes.
-- `bruce-dashboard`: `nginx:alpine` container that serves the latest generated HTML dashboard on port `8088`.
+- `bruce-analyzer`: vigila `/data/inbox`, procesa capturas, persiste estado en SQLite, actualiza reportes y ejecuta un hook cuando cambia la clasificación.
+- `bruce-dashboard`: contenedor `nginx:alpine` que sirve el dashboard HTML más reciente en el puerto `8088`.
 
-## Persistent tree
+## Árbol persistente
 
-The stack expects this host path:
+El stack espera esta ruta en el host:
 
 ```text
 /srv/bruce-pipeline
@@ -30,17 +30,17 @@ The stack expects this host path:
     └── bruce_pipeline.sqlite3
 ```
 
-## IACO metric
+## Métrica IACO
 
-The analyzer calculates:
+El analizador calcula:
 
-- `F`: total 802.11 frames
-- `B`: unique BSSIDs observed
-- `K`: unique Wi-Fi source MACs observed
-- `P`: probe request + probe response frames
-- `D`: deauthentication + disassociation frames
+- `F`: total de tramas 802.11
+- `B`: BSSIDs únicos observados
+- `K`: MACs de origen Wi-Fi únicas observadas
+- `P`: tramas de probe request + probe response
+- `D`: tramas de deauthentication + disassociation
 
-Normalizations:
+Normalizaciones:
 
 ```text
 NF = min(F/250, 1)
@@ -52,49 +52,38 @@ ND = min(D/10, 1)
 IACO = 100 * (0.35*NF + 0.20*NB + 0.20*NK + 0.15*NP + 0.10*ND)
 ```
 
-Classification bands:
+Bandas de clasificación:
 
 - `0-34`: `NORMAL`
 - `35-64`: `CONGESTIONADO`
 - `65-100`: `CRITICO`
 
-## Local run
+## Ejecución local
 
 ```bash
 BRUCE_DATA_ROOT=./local-data docker compose up --build -d
 ```
 
-Then drop a capture into `./local-data/inbox/` and open `http://localhost:8088`.
+Después, coloca una captura en `./local-data/inbox/` y abre `http://localhost:8088`.
 
-## Manual test with the real sample
+## Despliegue en CasaOS
 
-Use `C:\Users\Rene Hernandez\Downloads\raw_2.pcap` only as a host-side example source file for manual testing. It is not a runtime path inside the container.
-
-Example flow:
-
-1. Start the stack.
-2. Copy the sample file into the inbox mounted on the host.
-3. Wait for the analyzer to move the file into `processed/pcap/YYYY/MM/DD/`.
-4. Review `reports/json`, `reports/csv`, `reports/html/index.html`, and `state/current_state.json`.
-
-## CasaOS deployment
-
-1. Let GitHub Actions publish `ghcr.io/reneeduardo24/bruce-pipeline-analyzer`.
-2. In CasaOS, open Custom Install and import `docker-compose.casaos.yml`.
-3. Make sure `/srv/bruce-pipeline` exists on the Raspberry Pi.
-4. Launch the stack and upload `.pcap` files into `/srv/bruce-pipeline/inbox`.
+1. Deja que GitHub Actions publique `ghcr.io/reneeduardo24/bruce-pipeline-analyzer`.
+2. En CasaOS, abre Custom Install e importa `docker-compose.casaos.yml`.
+3. Asegúrate de que `/srv/bruce-pipeline` exista en la Raspberry Pi.
+4. Inicia el stack y sube archivos `.pcap` a `/srv/bruce-pipeline/inbox`.
 
 ## GitHub Actions + GHCR
 
-The workflow in `.github/workflows/publish.yml` runs tests, builds a multi-arch image for `linux/amd64` and `linux/arm64`, and publishes tags:
+El workflow en `.github/workflows/publish.yml` ejecuta pruebas, construye una imagen multi-arquitectura para `linux/amd64` y `linux/arm64`, y publica tags:
 
-- `latest` on `main`
-- `sha-*` for each pushed commit
-- `vX.Y.Z` for release tags
+- `latest` en `main`
+- `sha-*` para cada commit enviado
+- `vX.Y.Z` para tags de versión
 
-## Hook behavior
+## Comportamiento del hook
 
-When classification changes, `bruce-analyzer` executes `HOOK_PATH` with these environment variables:
+Cuando cambia la clasificación, `bruce-analyzer` ejecuta `HOOK_PATH` con estas variables de entorno:
 
 - `BRUCE_OLD_CLASSIFICATION`
 - `BRUCE_NEW_CLASSIFICATION`
@@ -104,4 +93,4 @@ When classification changes, `bruce-analyzer` executes `HOOK_PATH` with these en
 - `BRUCE_CAPTURE_SHA256`
 - `BRUCE_CAPTURE_PATH`
 
-The default hook appends the transition to `/data/state/hook-events.log`.
+El hook por defecto agrega la transición en `/data/state/hook-events.log`.
