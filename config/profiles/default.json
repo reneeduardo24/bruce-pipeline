@@ -1,0 +1,52 @@
+{
+  "name": "default-wifi-mvp",
+  "version": "0.1.0",
+  "description": "Default Bruce Pipeline profile for Wi-Fi environment pressure classification.",
+  "metrics": {
+    "F": {
+      "label": "802.11 frames",
+      "cap": 250,
+      "weight": 0.35
+    },
+    "B": {
+      "label": "unique BSSIDs",
+      "cap": 25,
+      "weight": 0.2
+    },
+    "K": {
+      "label": "unique source MACs",
+      "cap": 30,
+      "weight": 0.2
+    },
+    "P": {
+      "label": "probe activity",
+      "cap": 20,
+      "weight": 0.15
+    },
+    "D": {
+      "label": "deauth + disassoc",
+      "cap": 10,
+      "weight": 0.1
+    }
+  },
+  "bands": [
+    {
+      "name": "NORMAL",
+      "min": 0,
+      "max": 34,
+      "description": "Low observed Wi-Fi pressure."
+    },
+    {
+      "name": "CONGESTIONADO",
+      "min": 35,
+      "max": 64,
+      "description": "Moderate pressure with competing devices or probe activity."
+    },
+    {
+      "name": "CRITICO",
+      "min": 65,
+      "max": 100,
+      "description": "High frame density and disruptive events."
+    }
+  ]
+}

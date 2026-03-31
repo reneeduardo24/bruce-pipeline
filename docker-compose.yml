@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  bruce-analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bruce-analyzer
+    environment:
+      DATA_ROOT: /data
+      PROFILE_PATH: /app/config/profiles/default.json
+      CONFIG_PATH: /app/config/settings.json
+      HOOK_PATH: /app/hooks/on_state_change.sh
+      POLL_INTERVAL_SECONDS: 5
+      STABLE_SECONDS: 10
+    volumes:
+      - ${BRUCE_DATA_ROOT:-/srv/bruce-pipeline}:/data
+    restart: unless-stopped
+
+  bruce-dashboard:
+    image: nginx:alpine
+    container_name: bruce-dashboard
+    depends_on:
+      - bruce-analyzer
+    ports:
+      - "8088:80"
+    volumes:
+      - ${BRUCE_DATA_ROOT:-/srv/bruce-pipeline}/reports/html:/usr/share/nginx/html:ro
+    restart: unless-stopped
