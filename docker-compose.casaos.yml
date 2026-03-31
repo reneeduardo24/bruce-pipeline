@@ -11,6 +11,9 @@ services:
       HOOK_PATH: /app/hooks/on_state_change.sh
       POLL_INTERVAL_SECONDS: 5
       STABLE_SECONDS: 10
+      TELEGRAM_ENABLED: "false"
+      TELEGRAM_BOT_TOKEN: ""
+      TELEGRAM_CHAT_ID: ""
     volumes:
       - /srv/bruce-pipeline:/data
     restart: unless-stopped

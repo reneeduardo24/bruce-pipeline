@@ -333,13 +333,15 @@ class BruceAnalyzerService:
         env = os.environ.copy()
         env.update(
             {
-                "BRUCE_OLD_CLASSIFICATION": capture.previous_classification or "UNKNOWN",
+                "BRUCE_OLD_CLASSIFICATION": capture.previous_classification or "NONE",
                 "BRUCE_NEW_CLASSIFICATION": capture.assessment.classification,
                 "BRUCE_IACO_SCORE": f"{capture.assessment.score:.2f}",
                 "BRUCE_STATE_FILE": str(self.config.paths.current_state),
                 "BRUCE_SUMMARY_FILE": capture.summary_path,
+                "BRUCE_CAPTURE_NAME": capture.source_name,
                 "BRUCE_CAPTURE_SHA256": capture.sha256,
                 "BRUCE_CAPTURE_PATH": capture.stored_path,
+                "BRUCE_PROCESSED_AT": capture.processed_at,
                 "BRUCE_HOOK_LOG_FILE": str(self.config.paths.hook_log),
             }
         )

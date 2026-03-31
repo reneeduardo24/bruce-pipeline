@@ -9,24 +9,31 @@ from .models import ProcessedCapture
 from .utils import atomic_write_json, atomic_write_text, copy_to_latest, utc_timestamp
 
 
+ACADEMIC_LEGEND = (
+    "Proyecto realizado por René Eduardo Hernández Estrella para la Maestría en Ciencias "
+    "de la Ingeniería, materia Redes."
+)
+
+
 def ensure_placeholder_dashboard(config: AppConfig) -> None:
     if config.paths.latest_html.exists():
         return
     atomic_write_text(
         config.paths.latest_html,
         """<!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bruce Pipeline</title>
+  <title>Panel de Bruce Pipeline</title>
   <style>
-    :root { color-scheme: light; --bg: #f5efe6; --card: #fffaf3; --ink: #1f2933; --accent: #c26d28; }
+    :root { color-scheme: light; --bg: #f5efe6; --card: #fffaf3; --ink: #1f2933; --accent: #c26d28; --muted: #52606d; }
     body { margin: 0; font-family: Georgia, serif; background: radial-gradient(circle at top, #fff8ed 0%, #f1e6d6 52%, #e4d2bc 100%); color: var(--ink); }
     main { max-width: 880px; margin: 48px auto; padding: 24px; }
     section { background: rgba(255, 250, 243, 0.92); border: 1px solid rgba(69, 46, 25, 0.12); border-radius: 18px; padding: 24px; box-shadow: 0 22px 42px rgba(94, 65, 34, 0.08); }
     h1 { margin-top: 0; letter-spacing: 0.04em; text-transform: uppercase; font-size: 1.2rem; }
     p { line-height: 1.6; }
+    .legend { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(69, 46, 25, 0.12); color: var(--muted); font-size: 0.95rem; }
     code { background: rgba(194, 109, 40, 0.12); padding: 2px 6px; border-radius: 6px; }
   </style>
 </head>
@@ -34,8 +41,9 @@ def ensure_placeholder_dashboard(config: AppConfig) -> None:
   <main>
     <section>
       <h1>Bruce Pipeline</h1>
-      <p>The dashboard will appear here after the first valid capture is processed.</p>
-      <p>Drop a <code>.pcap</code> or <code>.pcapng</code> file into the inbox and wait for the analyzer to publish the latest HTML report.</p>
+      <p>El panel aparecerá aquí después de procesar la primera captura válida.</p>
+      <p>Coloca un archivo <code>.pcap</code> o <code>.pcapng</code> en el inbox y espera a que el analizador publique el reporte HTML más reciente.</p>
+      <p class="legend">Proyecto realizado por René Eduardo Hernández Estrella para la Maestría en Ciencias de la Ingeniería, materia Redes.</p>
     </section>
   </main>
 </body>
@@ -57,7 +65,7 @@ def _metric_row(label: str, raw_value: Any, normalized_value: float) -> str:
 
 def _render_top_list(items: list[dict[str, Any]], title: str) -> str:
     if not items:
-        return f"<section class=\"panel\"><h3>{html.escape(title)}</h3><p>No data.</p></section>"
+        return f"<section class=\"panel\"><h3>{html.escape(title)}</h3><p>Sin datos.</p></section>"
     rows = "".join(
         f"<tr><td>{html.escape(str(item['value']))}</td><td>{item['count']}</td></tr>"
         for item in items
@@ -120,11 +128,11 @@ def render_html(summary: dict[str, Any]) -> str:
     }
     accent, surface = palette.get(classification, ("#1f2933", "#ffffff"))
     metric_labels = {
-        "NF": "Frames",
+        "NF": "Tramas",
         "NB": "BSSIDs",
-        "NK": "Clients",
-        "NP": "Probe activity",
-        "ND": "Disruptive events",
+        "NK": "Clientes",
+        "NP": "Actividad probe",
+        "ND": "Eventos disruptivos",
     }
     raw_map = {
         "NF": metrics["frames"],
@@ -137,14 +145,14 @@ def render_html(summary: dict[str, Any]) -> str:
         _metric_row(metric_labels[key], raw_map[key], float(value))
         for key, value in assessment["normalized_metrics"].items()
     )
-    previous = capture["previous_classification"] or "NONE"
-    changed = "YES" if capture["state_changed"] else "NO"
+    previous = capture["previous_classification"] or "NINGUNA"
+    changed = "SI" if capture["state_changed"] else "NO"
     return f"""<!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bruce Pipeline Dashboard</title>
+  <title>Panel de Bruce Pipeline</title>
   <style>
     :root {{
       color-scheme: light;
@@ -183,7 +191,8 @@ def render_html(summary: dict[str, Any]) -> str:
     th {{ width: 30%; font-weight: 700; }}
     .meter {{ margin-bottom: 8px; height: 10px; width: 100%; background: rgba(31, 41, 51, 0.08); border-radius: 999px; overflow: hidden; }}
     .meter span {{ display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 74%, white), var(--accent)); border-radius: 999px; }}
-    footer {{ padding: 18px 0 36px; color: var(--muted); font-size: 0.92rem; }}
+    .legend {{ margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.72); border: 1px solid var(--line); color: var(--muted); }}
+    footer {{ display: grid; gap: 12px; padding: 18px 0 36px; color: var(--muted); font-size: 0.92rem; }}
     @media (max-width: 860px) {{ .grid {{ grid-template-columns: 1fr; }} }}
   </style>
 </head>
@@ -192,49 +201,51 @@ def render_html(summary: dict[str, Any]) -> str:
     <header>
       <span class="badge">{html.escape(classification)}</span>
       <h1>Bruce Pipeline</h1>
-      <p>Latest Wi-Fi environment classification generated from a Bruce RAW Sniffer capture.</p>
+      <p>Clasificación más reciente del entorno Wi-Fi generada a partir de una captura de Bruce RAW Sniffer.</p>
     </header>
 
     <section class="hero">
       <div class="score">
         <article class="card"><div class="label">IACO</div><div class="value">{assessment['score']:.2f}</div></article>
-        <article class="card"><div class="label">Frames</div><div class="value">{metrics['frames']}</div></article>
-        <article class="card"><div class="label">Unique BSSIDs</div><div class="value">{metrics['unique_bssids']}</div></article>
-        <article class="card"><div class="label">Duration</div><div class="value">{metrics['duration_seconds']:.3f}s</div></article>
+        <article class="card"><div class="label">Tramas</div><div class="value">{metrics['frames']}</div></article>
+        <article class="card"><div class="label">BSSIDs únicos</div><div class="value">{metrics['unique_bssids']}</div></article>
+        <article class="card"><div class="label">Duración</div><div class="value">{metrics['duration_seconds']:.3f}s</div></article>
       </div>
       <p>{html.escape(assessment['band_description'])}</p>
+      <p class="legend">{html.escape(ACADEMIC_LEGEND)}</p>
     </section>
 
     <section class="grid">
       <article class="panel">
-        <h2>Metric Breakdown</h2>
+        <h2>Desglose de métricas</h2>
         <table>
           <tbody>{metric_rows}</tbody>
         </table>
       </article>
       <article class="panel">
-        <h2>Capture</h2>
+        <h2>Captura</h2>
         <table>
           <tbody>
-            <tr><th>Source</th><td>{html.escape(capture['source_name'])}</td></tr>
-            <tr><th>Stored path</th><td>{html.escape(capture['stored_path'])}</td></tr>
+            <tr><th>Archivo original</th><td>{html.escape(capture['source_name'])}</td></tr>
+            <tr><th>Ruta almacenada</th><td>{html.escape(capture['stored_path'])}</td></tr>
             <tr><th>SHA256</th><td>{html.escape(capture['sha256'])}</td></tr>
-            <tr><th>Processed at</th><td>{html.escape(capture['processed_at'])}</td></tr>
-            <tr><th>Format</th><td>{html.escape(capture['capture_format'])}</td></tr>
-            <tr><th>Previous class</th><td>{html.escape(previous)}</td></tr>
-            <tr><th>State changed</th><td>{changed}</td></tr>
+            <tr><th>Procesado el</th><td>{html.escape(capture['processed_at'])}</td></tr>
+            <tr><th>Formato</th><td>{html.escape(capture['capture_format'])}</td></tr>
+            <tr><th>Clasificación anterior</th><td>{html.escape(previous)}</td></tr>
+            <tr><th>Cambio de estado</th><td>{changed}</td></tr>
           </tbody>
         </table>
       </article>
     </section>
 
     <section class="panels">
-      {_render_top_list(metrics['top_bssids'], 'Top BSSIDs')}
-      {_render_top_list(metrics['top_ssids'], 'Top SSIDs')}
+      {_render_top_list(metrics['top_bssids'], 'BSSIDs principales')}
+      {_render_top_list(metrics['top_ssids'], 'SSIDs principales')}
     </section>
 
     <footer>
-      Generated at {html.escape(summary['generated_at'])}. JSON and CSV companions are stored alongside this report.
+      <p>Reporte generado el {html.escape(summary['generated_at'])}. Los archivos JSON y CSV complementarios se almacenan junto a este reporte.</p>
+      <p>{html.escape(ACADEMIC_LEGEND)}</p>
     </footer>
   </main>
 </body>

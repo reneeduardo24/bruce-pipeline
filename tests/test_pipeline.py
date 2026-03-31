@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, cast
 
 from analyzer.app.configuration import load_config
 from analyzer.app.database import Database
@@ -50,12 +52,17 @@ class PipelineTests(unittest.TestCase):
             data_root=str(self.temp_dir / "data"),
         )
         self.database = Database(self.config.paths.database)
-        self.service = BruceAnalyzerService(self.config, self.database, FakeTshark())
+        self.service = BruceAnalyzerService(self.config, self.database, cast(Any, FakeTshark()))
         self.service.prepare_runtime()
 
     def tearDown(self) -> None:
         self.database.close()
         shutil.rmtree(self.temp_dir)
+
+    def test_placeholder_dashboard_is_in_spanish_with_academic_legend(self) -> None:
+        placeholder = self.config.paths.latest_html.read_text(encoding="utf-8")
+        self.assertIn("El panel aparecerá aquí después de procesar la primera captura válida.", placeholder)
+        self.assertIn("Proyecto realizado por René Eduardo Hernández Estrella", placeholder)
 
     def test_process_file_generates_outputs(self) -> None:
         inbox_file = self.config.paths.inbox / "capture.pcap"
@@ -68,6 +75,10 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(self.config.paths.latest_csv.exists())
         self.assertTrue(self.config.paths.latest_html.exists())
         self.assertTrue(self.config.paths.current_state.exists())
+        dashboard = self.config.paths.latest_html.read_text(encoding="utf-8")
+        self.assertIn("Clasificación más reciente del entorno Wi-Fi", dashboard)
+        self.assertIn("Desglose de métricas", dashboard)
+        self.assertIn("Proyecto realizado por René Eduardo Hernández Estrella", dashboard)
 
     def test_duplicate_file_is_separated(self) -> None:
         first = self.config.paths.inbox / "first.pcap"
@@ -81,6 +92,20 @@ class PipelineTests(unittest.TestCase):
         processed = list(self.config.paths.processed_pcap.rglob("*.pcap"))
         self.assertEqual(len(processed), 1)
         self.assertEqual(len(duplicates), 1)
+
+    def test_hook_logs_state_change_without_breaking_processing(self) -> None:
+        if os.name == "nt":
+            self.skipTest("El hook de shell se valida directamente en entornos POSIX.")
+        self.config.hook_path.chmod(0o755)
+        inbox_file = self.config.paths.inbox / "hook-check.pcap"
+        inbox_file.write_bytes(b"pcap-data-hook")
+
+        self.service.process_file(inbox_file)
+
+        hook_log = self.config.paths.hook_log.read_text(encoding="utf-8")
+        self.assertIn("evento=clasificacion", hook_log)
+        self.assertIn("old=NONE", hook_log)
+        self.assertIn("new=NORMAL", hook_log)
 
 
 if __name__ == "__main__":
